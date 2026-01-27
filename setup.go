@@ -65,6 +65,7 @@ func processCmdLineFlags(opts *options) {
 	flag.BoolVar(&opts.doCache, "cache", opts.doCache, "Do update the cache")
 	flag.BoolVar(&opts.Encrypt, "encrypt", opts.Encrypt, "Encrypt files on server side")
 	flag.BoolVar(&opts.saveCfg, "save", opts.saveCfg, "Saves the current commandline options to a config file")
+	flag.BoolVar(&opts.version, "version", opts.version, "Print version information and exit")
 	flag.Parse()
 }
 
@@ -148,6 +149,13 @@ func init() {
 		abort(err)
 	}
 	processCmdLineFlags(opts)
+
+	// Handle version flag early, before AWS initialization
+	if opts.version {
+		fmt.Println(GetVersion())
+		os.Exit(Success)
+	}
+
 	if opts.cfgFile != oldCfgFile { // we were given a different config file, use that instead.
 		if err := opts.restore(opts.cfgFile); err != nil {
 			abort(err)
