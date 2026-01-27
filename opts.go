@@ -18,7 +18,7 @@ type options struct {
 	Encrypt      bool `json:"encrypt,omitempty"`
 
 	dryRun, verbose, quiet,
-	doCache, doUpload, saveCfg bool
+	doCache, doUpload, saveCfg, version bool
 }
 
 func (o *options) dump(fname string) error {

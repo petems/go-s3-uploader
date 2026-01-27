@@ -10,7 +10,14 @@ This is a fork of [alexaandru/go3up](https://github.com/alexaandru/go3up) mainta
 
 ## Building and Testing
 
-Build the binary:
+Build the binary with version information:
+```bash
+make build
+```
+
+The Makefile automatically injects version information from git (commit hash, tags, and build date).
+
+Build directly with go (without version info):
 ```bash
 go build
 ```
