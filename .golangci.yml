@@ -30,6 +30,10 @@ linters-settings:
 
   govet:
     enable-all: true
+    settings:
+      fieldalignment:
+        # Disabled as it's platform-specific and can cause CI issues
+        enabled: false
 
   gocyclo:
     min-complexity: 15
