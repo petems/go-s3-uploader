@@ -263,6 +263,146 @@ type MockS3Uploader struct {
 - Goreleaser for releases
 - Dependabot for dependency updates
 
+### 8. CI/CD Implementation
+
+#### 8.1 GitHub Actions Workflow
+
+**Objective**: Automated testing and quality checks on all commits and pull requests
+
+**Triggers**:
+- Push to `main`/`master` branch
+- Pull request opened/updated against `main`/`master`
+
+**Jobs**:
+
+##### Test Job
+- **Matrix strategy**: Test against multiple Go versions (1.21, 1.22, 1.23, 1.24)
+- **Steps**:
+  1. Checkout code
+  2. Setup Go with caching
+  3. Download and verify dependencies
+  4. Run tests with race detection and coverage
+  5. Upload coverage to Codecov (optional)
+- **Benefits**: Ensures compatibility across Go versions
+
+##### Lint Job
+- **Go version**: Latest stable (1.24)
+- **Steps**:
+  1. Checkout code
+  2. Setup Go with caching
+  3. Run golangci-lint with configured rules
+- **Benefits**: Enforces code quality standards
+
+##### Build Job
+- **Matrix strategy**: Build for multiple platforms
+  - OS: Linux, macOS, Windows
+  - Architecture: amd64, arm64
+- **Steps**:
+  1. Checkout code
+  2. Setup Go
+  3. Cross-compile binaries
+  4. Upload build artifacts (7-day retention)
+- **Benefits**: Validates builds work on target platforms
+
+#### 8.2 golangci-lint Configuration
+
+**Enabled Linters**:
+- **Error handling**: errcheck, errorlint
+- **Code quality**: gosimple, govet, staticcheck, revive
+- **Security**: gosec
+- **Style**: gofmt, goimports, misspell, gocritic
+- **Performance**: ineffassign, unused, unconvert
+- **Complexity**: gocyclo (threshold: 15)
+
+**Special Configurations**:
+- G304 excluded (file path inputs are expected in CLI tools)
+- G401 excluded (MD5 used for checksums, not cryptography)
+- Relaxed rules for test files
+- Legacy issue exclusions during migration phase
+
+#### 8.3 Code Coverage
+
+**Current**: No coverage tracking
+**Target**: >70% coverage
+
+**Integration**:
+- Coverage reports generated on each test run
+- Codecov integration (optional)
+- Coverage badge in README
+
+#### 8.4 Future Enhancements
+
+**Dependabot** (`.github/dependabot.yml`):
+```yaml
+version: 2
+updates:
+  - package-ecosystem: "gomod"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+```
+
+**GoReleaser** (`.goreleaser.yml`):
+- Automated releases when tags are pushed
+- Multi-platform binary distribution
+- Homebrew tap support
+- Docker image publishing
+- Changelog generation
+
+**Pre-commit Hooks**:
+```bash
+# Install: go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+# .git/hooks/pre-commit
+#!/bin/bash
+golangci-lint run
+go test ./...
+```
+
+#### 8.5 Branch Protection Rules
+
+**Recommended settings for `main` branch**:
+- ✅ Require pull request reviews (1 approval)
+- ✅ Require status checks to pass:
+  - `test` (all Go versions)
+  - `lint`
+  - `build` (all platforms)
+- ✅ Require branches to be up to date
+- ✅ Require conversation resolution before merging
+- ✅ Do not allow bypassing the above settings
+
+#### 8.6 Migration Path
+
+**Step 1**: Create workflow files (CI pipeline)
+```bash
+.github/
+├── workflows/
+│   └── ci.yml
+└── dependabot.yml (optional)
+```
+
+**Step 2**: Create linter configuration
+```bash
+.golangci.yml
+```
+
+**Step 3**: Fix existing linting issues
+- Run `golangci-lint run --fix` for auto-fixable issues
+- Manually address remaining issues
+- Add temporary exclusions if needed for legacy code
+
+**Step 4**: Enable GitHub Actions
+- Push workflow files
+- Verify jobs execute successfully
+- Configure branch protection rules
+
+**Step 5**: Add badges to README.md
+```markdown
+[![CI](https://github.com/petems/go-s3-uploader/workflows/CI/badge.svg)](https://github.com/petems/go-s3-uploader/actions)
+[![Go Report Card](https://goreportcard.com/badge/github.com/petems/go-s3-uploader)](https://goreportcard.com/report/github.com/petems/go-s3-uploader)
+[![codecov](https://codecov.io/gh/petems/go-s3-uploader/branch/main/graph/badge.svg)](https://codecov.io/gh/petems/go-s3-uploader)
+```
+
 ## Implementation Priority
 
 ### Phase 1: Foundation (Low Risk)
@@ -287,9 +427,15 @@ type MockS3Uploader struct {
 4. ✅ Update tests to use mocks
 
 ### Phase 4: Infrastructure
-1. ✅ Add golangci-lint configuration
-2. ✅ Add GitHub Actions CI
-3. ✅ Add goreleaser config
+1. ✅ Add `.golangci.yml` configuration with sensible defaults
+2. ✅ Create `.github/workflows/ci.yml` with test, lint, and build jobs
+3. ✅ Configure matrix builds for multiple Go versions (1.21-1.24)
+4. ✅ Configure cross-platform builds (Linux, macOS, Windows)
+5. ✅ Run golangci-lint and fix auto-fixable issues
+6. ✅ Add CI status badges to README
+7. ✅ Configure branch protection rules on GitHub
+8. ⬜ Add Dependabot configuration (optional)
+9. ⬜ Add goreleaser config for releases (future)
 
 ## Breaking Changes
 
@@ -320,6 +466,10 @@ The following changes will require user action:
 - [ ] Context cancellation works correctly
 - [ ] AWS SDK v2 integration functional
 - [ ] Performance equivalent or better than current
+- [ ] CI pipeline runs successfully on all commits
+- [ ] Tests pass on Linux, macOS, and Windows
+- [ ] Multi-version Go testing (1.21-1.24) passes
+- [ ] Code coverage tracked and visible
 
 ## Notes
 
