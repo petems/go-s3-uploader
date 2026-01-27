@@ -2,12 +2,12 @@ package main
 
 import "sync"
 
-type syncedlist struct {
+type syncedList struct {
 	list []string
 	sync.Mutex
 }
 
-func (sl *syncedlist) add(item string) {
+func (sl *syncedList) add(item string) {
 	sl.Lock()
 	sl.list = append(sl.list, item)
 	sl.Unlock()

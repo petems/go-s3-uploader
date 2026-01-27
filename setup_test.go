@@ -44,14 +44,14 @@ func TestValidateCmdLineFlag(t *testing.T) {
 	}
 }
 
-func fakeUploaderGen(opts ...int) (fn uploader, out *([]*sourceFile)) {
+func fakeUploaderGen(opts ...int) (uploader, *[]*sourceFile) {
 	errorKind, m := noError, sync.Mutex{}
 	if len(opts) > 0 {
 		errorKind = opts[0]
 	}
 
-	out = &[]*sourceFile{}
-	fn = func(src *sourceFile) (err error) {
+	out := &[]*sourceFile{}
+	fn := func(src *sourceFile) error {
 		m.Lock()
 		*out = append(*out, src)
 		m.Unlock()
@@ -66,7 +66,7 @@ func fakeUploaderGen(opts ...int) (fn uploader, out *([]*sourceFile)) {
 		}
 	}
 
-	return
+	return fn, out
 }
 
 var _ = func() bool {

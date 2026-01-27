@@ -7,21 +7,21 @@ import (
 )
 
 type options struct {
-	BucketName string `json:",omitempty"`
-	Source     string `json:",omitempty"`
-	CacheFile  string `json:",omitempty"`
-	Region     string `json:",omitempty"`
-	Profile    string `json:",omitempty"`
+	BucketName string `json:"bucket_name,omitempty"`
+	Source     string `json:"source,omitempty"`
+	CacheFile  string `json:"cache_file,omitempty"`
+	Region     string `json:"region,omitempty"`
+	Profile    string `json:"profile,omitempty"`
 	cfgFile    string
 
-	WorkersCount int  `json:",omitempty"`
-	Encrypt      bool `json:",omitempty"`
+	WorkersCount int  `json:"workers_count,omitempty"`
+	Encrypt      bool `json:"encrypt,omitempty"`
 
 	dryRun, verbose, quiet,
 	doCache, doUpload, saveCfg bool
 }
 
-func (o *options) dump(fname string) (err error) {
+func (o *options) dump(fname string) error {
 	f, err := os.Create(fname) // #nosec G304 - file path from user config is expected
 	if err != nil {
 		return err
@@ -35,19 +35,18 @@ func (o *options) dump(fname string) (err error) {
 		}
 	}()
 
-	var buf []byte
-	buf, err = json.MarshalIndent(o, "", "  ")
+	buf, err := json.MarshalIndent(o, "", "  ")
 	if err != nil {
-		return
+		return err
 	}
 	buf = append(buf, "\n"[0])
 
 	_, err = f.Write(buf)
 
-	return
+	return err
 }
 
-func (o *options) restore(fname string) (err error) {
+func (o *options) restore(fname string) error {
 	f, err := os.Open(fname) // #nosec G304 - file path from user config is expected
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -65,7 +64,7 @@ func (o *options) restore(fname string) (err error) {
 	tmp := options{}
 	dec := json.NewDecoder(f)
 	if err = dec.Decode(&tmp); err != nil {
-		return
+		return err
 	}
 
 	o.merge(&tmp)

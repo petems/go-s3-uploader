@@ -9,7 +9,7 @@ import (
 )
 
 func TestSyncedListAdd(t *testing.T) {
-	n, cl := 10, &syncedlist{}
+	n, cl := 10, &syncedList{}
 	expectedArr := make([]string, n)
 	wg := new(sync.WaitGroup)
 	wg.Add(n)

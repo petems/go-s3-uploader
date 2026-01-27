@@ -29,7 +29,7 @@ func TestFilesList(t *testing.T) {
 func TestUpload(t *testing.T) {
 	upFn, uploads := fakeUploaderGen()
 	up := make(chan *sourceFile)
-	rejected := &syncedlist{}
+	rejected := &syncedList{}
 	wgUploads, wgWorkers := new(sync.WaitGroup), new(sync.WaitGroup)
 
 	wgUploads.Add(2)
@@ -55,7 +55,7 @@ func TestUpload(t *testing.T) {
 func TestUploadDryRun(t *testing.T) {
 	upFn, uploads := fakeUploaderGen()
 	up := make(chan *sourceFile)
-	rejected := &syncedlist{}
+	rejected := &syncedList{}
 	wgUploads, wgWorkers := new(sync.WaitGroup), new(sync.WaitGroup)
 
 	wgUploads.Add(2)
@@ -84,7 +84,7 @@ func TestUploadDryRun(t *testing.T) {
 func TestUploadUnrecoverable(t *testing.T) {
 	upFn, uploads := fakeUploaderGen(fatalError)
 	up := make(chan *sourceFile)
-	rejected := &syncedlist{}
+	rejected := &syncedList{}
 	wgUploads, wgWorkers := new(sync.WaitGroup), new(sync.WaitGroup)
 
 	wgUploads.Add(2)
@@ -114,7 +114,7 @@ func TestUploadRecoverable(t *testing.T) {
 	upFn, uploads := fakeUploaderGen(recoverableError)
 	_ = uploads
 	up := make(chan *sourceFile)
-	rejected := &syncedlist{}
+	rejected := &syncedList{}
 	wgUploads, wgWorkers := new(sync.WaitGroup), new(sync.WaitGroup)
 
 	wgUploads.Add(2)
