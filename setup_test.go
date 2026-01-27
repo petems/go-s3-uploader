@@ -42,6 +42,16 @@ func TestValidateCmdLineFlag(t *testing.T) {
 	if err := validateCmdLineFlag("Bucket Name", ""); err == nil {
 		t.Error("Expected foobar bucket name to fail validation")
 	}
+
+	// Cache file is allowed to not exist (first-time users)
+	if err := validateCmdLineFlag("Cache file", "test/nonexistent-cache.txt"); err != nil {
+		t.Error("Expected non-existent cache file to pass validation")
+	}
+
+	// Existing cache file should also pass validation
+	if err := validateCmdLineFlag("Cache file", "test/.go3up.txt"); err != nil {
+		t.Error("Expected existing cache file to pass validation")
+	}
 }
 
 func fakeUploaderGen(opts ...int) (uploader, *[]*sourceFile) {

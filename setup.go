@@ -90,6 +90,11 @@ func validateCmdLineFlag(label, val string) error {
 		if val == "" {
 			return fmt.Errorf("%s is not set", label)
 		}
+	case "Cache file":
+		// Cache file is allowed to not exist (will be created on first run)
+		if _, err := os.Stat(val); err != nil && !os.IsNotExist(err) {
+			return err
+		}
 	default:
 		_, err := os.Stat(val)
 		return err
