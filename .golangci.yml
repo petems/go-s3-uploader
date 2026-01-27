@@ -3,9 +3,6 @@ version: "2"
 run:
   timeout: 5m
   tests: true
-  skip-dirs:
-    - vendor
-    - test/output
 
 linters:
   enable:
@@ -61,6 +58,9 @@ issues:
   exclude-use-default: false
   max-issues-per-linter: 0
   max-same-issues: 0
+  exclude-dirs:
+    - vendor
+    - test/output
 
   exclude-rules:
     # Exclude specific linters for test files
