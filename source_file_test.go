@@ -12,7 +12,8 @@ func TestHeadersMerge(t *testing.T) {
 		headers{"baz": "baz1"}
 	expected := headers{"foo": "foo1", "bar": "bar1", "baz": "baz1"}
 
-	if h1.merge(h2); !h1.equal(expected) {
+	h1.merge(h2)
+	if !h1.equal(expected) {
 		t.Errorf("Expected %v to equal %v", h1, expected)
 	}
 }

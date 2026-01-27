@@ -63,7 +63,7 @@ func (o *options) restore(fname string) error {
 
 	tmp := options{}
 	dec := json.NewDecoder(f)
-	if err = dec.Decode(&tmp); err != nil {
+	if err := dec.Decode(&tmp); err != nil {
 		return err
 	}
 
