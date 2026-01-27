@@ -1,4 +1,4 @@
-module github.com/alexaandru/go3up
+module github.com/petems/go-s3-uploader
 
 go 1.13
 

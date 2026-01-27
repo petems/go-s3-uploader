@@ -1,3 +1,4 @@
 *.sw?
+go-s3-uploader
 go3up
 coverage.???

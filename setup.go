@@ -19,12 +19,12 @@ import (
 var opts = &options{
 	WorkersCount: runtime.NumCPU() * 2,
 	Source:       "output",
-	CacheFile:    ".go3up.txt",
+	CacheFile:    ".go-s3-uploader.txt",
 	doUpload:     true,
 	doCache:      true,
 	Region:       os.Getenv("AWS_DEFAULT_REGION"),
 	Profile:      os.Getenv("AWS_DEFAULT_PROFILE"),
-	cfgFile:      ".go3up.json",
+	cfgFile:      ".go-s3-uploader.json",
 }
 
 var appEnv string
