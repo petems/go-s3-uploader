@@ -27,11 +27,13 @@ type pathToHeaders struct {
 }
 
 type sourceFile struct {
-	fname,
+	fname string
 	fpath string
-	hdrs     headers
-	gzip     bool
+	hdrs  headers
+
 	attempts int
+	gzip     bool
+
 	sync.Mutex
 }
 

@@ -14,8 +14,6 @@ const (
 	fatalError
 )
 
-var fakeBuffer *bytes.Buffer
-
 func TestValidateCmdLineFlags(t *testing.T) {
 	opts1 := &options{BucketName: "example_bucket", Source: "test/output", CacheFile: "test/.go3up.txt", Region: "us-west-1"}
 	if err := validateCmdLineFlags(opts1); err != nil {
@@ -58,13 +56,14 @@ func fakeUploaderGen(opts ...int) (fn uploader, out *([]*sourceFile)) {
 		*out = append(*out, src)
 		m.Unlock()
 
-		if errorKind == noError {
-			return
-		} else if errorKind == recoverableError {
+		switch errorKind {
+		case noError:
+			return nil
+		case recoverableError:
 			return errors.New("Something something. " + recoverableErrorsSuffixes[0])
+		default:
+			return errors.New("Some made up error")
 		}
-
-		return errors.New("Some made up error")
 	}
 
 	return

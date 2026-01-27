@@ -30,7 +30,7 @@ var opts = &options{
 var appEnv string
 
 // s3 session.
-var sess = session.New()
+var sess *session.Session
 
 var s3svc *s3.S3
 
@@ -98,6 +98,12 @@ func validateCmdLineFlag(label, val string) (err error) {
 }
 
 func initAWSClient() {
+	var err error
+	sess, err = session.NewSession()
+	if err != nil {
+		abort(fmt.Errorf("failed to create AWS session: %w", err))
+	}
+
 	creds := credentials.NewChainCredentials(
 		[]credentials.Provider{
 			&credentials.SharedCredentialsProvider{Profile: opts.Profile},
@@ -116,7 +122,7 @@ func initAWSClient() {
 		if r := recover(); r != nil {
 			// If we got to this, then getting the credentials failed - nothing else
 			// can raise a panic in here.
-			abort(fmt.Errorf("Unable to initialize AWS credentials - please check environment."))
+			abort(fmt.Errorf("unable to initialize AWS credentials - please check environment"))
 		}
 	}()
 	if _, err := creds.Get(); err != nil {

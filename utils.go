@@ -47,16 +47,17 @@ func isRecoverable(err error) (yes bool) {
 // except if message for normal is missing. In that case, the verbose message
 // will be printed if available.
 func msg(msgs ...string) string {
-	if opts.verbose && len(msgs) > 0 {
+	switch {
+	case opts.verbose && len(msgs) > 0:
 		return msgs[0] + "\n"
-	} else if opts.quiet {
+	case opts.quiet:
 		if len(msgs) > 2 {
 			return msgs[2]
 		}
 		return ""
-	} else if len(msgs) > 1 {
+	case len(msgs) > 1:
 		return msgs[1]
+	default:
+		return ""
 	}
-
-	return ""
 }

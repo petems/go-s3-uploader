@@ -5,6 +5,8 @@ import (
 	"testing"
 )
 
+const testHTMLFile = "foobar.html"
+
 func TestHeadersMerge(t *testing.T) {
 	h1, h2 := headers{"foo": "foo1", "bar": "bar1"},
 		headers{"baz": "baz1"}
@@ -30,7 +32,7 @@ func TestHeaderEqual(t *testing.T) {
 }
 
 func TestNewSourceFile(t *testing.T) {
-	fname := "foobar.html"
+	fname := testHTMLFile
 	sf := newSourceFile(fname)
 	expectedHdrs := headers{ContentType: "text/html; charset=utf-8", ContentEncoding: "gzip", CacheControl: "max-age=3600"}
 
@@ -66,7 +68,7 @@ func TestNewSourceFile(t *testing.T) {
 }
 
 func TestSourceFileAttempted(t *testing.T) {
-	fname := "foobar.html"
+	fname := testHTMLFile
 	sf := newSourceFile(fname)
 	wg := new(sync.WaitGroup)
 
@@ -93,7 +95,7 @@ func TestSourceFileAttempted(t *testing.T) {
 }
 
 func TestSourceFileRetriable(t *testing.T) {
-	fname := "foobar.html"
+	fname := testHTMLFile
 	sf := newSourceFile(fname)
 
 	if sf.attempts = 0; !sf.retriable() {
