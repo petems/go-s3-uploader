@@ -1,7 +1,6 @@
 package main
 
 import (
-	"errors"
 	"flag"
 	"fmt"
 	"os"
@@ -70,31 +69,37 @@ func processCmdLineFlags(opts *options) {
 }
 
 // validateCmdLineFlags validates some of the flags, mostly paths. Defers actual validation to validateCmdLineFlag()
-func validateCmdLineFlags(opts *options) (err error) {
+func validateCmdLineFlags(opts *options) error {
 	flags := map[string]string{
 		"Bucket Name": opts.BucketName,
 		"Source":      opts.Source,
 		"Cache file":  opts.CacheFile,
 	}
 	for label, val := range flags {
-		if err = validateCmdLineFlag(label, val); err != nil {
-			return
+		if err := validateCmdLineFlag(label, val); err != nil {
+			return err
 		}
 	}
-	return
+	return nil
 }
 
 // validateCmdLineFlag handles the actual validation of flags.
-func validateCmdLineFlag(label, val string) (err error) {
+func validateCmdLineFlag(label, val string) error {
 	switch label {
 	case "Bucket Name":
 		if val == "" {
-			return errors.New(label + " is not set")
+			return fmt.Errorf("%s is not set", label)
+		}
+	case "Cache file":
+		// Cache file is allowed to not exist (will be created on first run)
+		if _, err := os.Stat(val); err != nil && !os.IsNotExist(err) {
+			return err
 		}
 	default:
-		_, err = os.Stat(val)
+		_, err := os.Stat(val)
+		return err
 	}
-	return
+	return nil
 }
 
 func initAWSClient() {

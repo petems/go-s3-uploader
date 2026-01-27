@@ -1,0 +1,167 @@
+# GoReleaser configuration for go-s3-uploader
+# Documentation: https://goreleaser.com
+
+version: 2
+
+before:
+  hooks:
+    # You may remove this if you don't use go modules.
+    - go mod tidy
+    # Run tests before building
+    - go test ./...
+
+builds:
+  - env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+      - amd64
+      - arm64
+      - arm
+    goarm:
+      - "7"
+    ignore:
+      - goos: windows
+        goarch: arm64
+      - goos: windows
+        goarch: arm
+    ldflags:
+      - -s -w
+      - -X main.version={{.Version}}
+      - -X main.commit={{.Commit}}
+      - -X main.date={{.Date}}
+    binary: go-s3-uploader
+
+archives:
+  - format: tar.gz
+    name_template: >-
+      {{ .ProjectName }}_
+      {{- title .Os }}_
+      {{- if eq .Arch "amd64" }}x86_64
+      {{- else if eq .Arch "386" }}i386
+      {{- else }}{{ .Arch }}{{ end }}
+      {{- if .Arm }}v{{ .Arm }}{{ end }}
+    format_overrides:
+      - goos: windows
+        format: zip
+    files:
+      - README.md
+      - LICENSE
+      - CLAUDE.md
+
+checksum:
+  name_template: 'checksums.txt'
+
+snapshot:
+  name_template: "{{ incpatch .Version }}-next"
+
+changelog:
+  sort: asc
+  use: github
+  filters:
+    exclude:
+      - '^docs:'
+      - '^test:'
+      - '^chore:'
+      - Merge pull request
+      - Merge branch
+  groups:
+    - title: 'Features'
+      regexp: '^.*?feat(\([[:word:]]+\))??!?:.+$'
+      order: 0
+    - title: 'Bug Fixes'
+      regexp: '^.*?fix(\([[:word:]]+\))??!?:.+$'
+      order: 1
+    - title: 'Performance Improvements'
+      regexp: '^.*?perf(\([[:word:]]+\))??!?:.+$'
+      order: 2
+    - title: 'Refactors'
+      regexp: '^.*?refactor(\([[:word:]]+\))??!?:.+$'
+      order: 3
+    - title: 'Documentation'
+      regexp: '^.*?docs(\([[:word:]]+\))??!?:.+$'
+      order: 4
+    - title: 'Other'
+      order: 999
+
+# Homebrew tap (optional - requires a separate tap repository)
+brews:
+  - repository:
+      owner: petems
+      name: homebrew-tap
+      token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
+    homepage: "https://github.com/petems/go-s3-uploader"
+    description: "S3 uploader with MD5 caching for fast incremental uploads"
+    license: "MIT"
+    folder: Formula
+    install: |
+      bin.install "go-s3-uploader"
+    test: |
+      system "#{bin}/go-s3-uploader", "--version"
+
+# Docker images (optional - requires Docker Hub or GitHub Container Registry setup)
+dockers:
+  - image_templates:
+      - "petems/go-s3-uploader:{{ .Tag }}"
+      - "petems/go-s3-uploader:v{{ .Major }}"
+      - "petems/go-s3-uploader:v{{ .Major }}.{{ .Minor }}"
+      - "petems/go-s3-uploader:latest"
+      - "ghcr.io/petems/go-s3-uploader:{{ .Tag }}"
+      - "ghcr.io/petems/go-s3-uploader:v{{ .Major }}"
+      - "ghcr.io/petems/go-s3-uploader:v{{ .Major }}.{{ .Minor }}"
+      - "ghcr.io/petems/go-s3-uploader:latest"
+    dockerfile: Dockerfile
+    build_flag_templates:
+      - "--pull"
+      - "--label=org.opencontainers.image.created={{.Date}}"
+      - "--label=org.opencontainers.image.title={{.ProjectName}}"
+      - "--label=org.opencontainers.image.revision={{.FullCommit}}"
+      - "--label=org.opencontainers.image.version={{.Version}}"
+      - "--label=org.opencontainers.image.source={{.GitURL}}"
+      - "--platform=linux/amd64"
+
+# GitHub Release
+release:
+  github:
+    owner: petems
+    name: go-s3-uploader
+  draft: false
+  prerelease: auto
+  mode: replace
+  header: |
+    ## Release {{ .Tag }} ({{ .Date }})
+
+    Welcome to this new release of go-s3-uploader!
+  footer: |
+    ## Installation
+
+    ### Homebrew (macOS/Linux)
+    ```bash
+    brew install petems/tap/go-s3-uploader
+    ```
+
+    ### Direct Download
+    Download the appropriate binary for your platform from the assets below.
+
+    ### Docker
+    ```bash
+    docker pull petems/go-s3-uploader:{{ .Tag }}
+    # or
+    docker pull ghcr.io/petems/go-s3-uploader:{{ .Tag }}
+    ```
+
+    **Full Changelog**: https://github.com/petems/go-s3-uploader/compare/{{ .PreviousTag }}...{{ .Tag }}
+
+# Source code archive
+source:
+  enabled: true
+
+# Announce (optional integrations)
+# announce:
+#   slack:
+#     enabled: true
+#     message_template: 'go-s3-uploader {{ .Tag }} is out! Check it out: {{ .ReleaseURL }}'
+#     channel: '#releases'

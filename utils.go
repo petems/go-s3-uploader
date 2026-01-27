@@ -30,14 +30,14 @@ func loggerGen(buffers ...*bytes.Buffer) func(msgs ...string) {
 }
 
 // isRecoverable verifies if the error given is in recoverableErrorsSuffixes list.
-func isRecoverable(err error) (yes bool) {
+func isRecoverable(err error) bool {
 	for _, errSuffix := range recoverableErrorsSuffixes {
 		if strings.HasSuffix(err.Error(), errSuffix) {
 			return true
 		}
 	}
 
-	return
+	return false
 }
 
 // msg accepts 3 messages, corresponding to (in order): verbose, normal, quiet,

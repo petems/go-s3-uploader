@@ -56,8 +56,8 @@ func (h *headers) equal(other headers) bool {
 	return true
 }
 
-func newSourceFile(fname string) (sf *sourceFile) {
-	sf = &sourceFile{fname: fname, fpath: filepath.Join(opts.Source, fname)}
+func newSourceFile(fname string) *sourceFile {
+	sf := &sourceFile{fname: fname, fpath: filepath.Join(opts.Source, fname)}
 	sf.hdrs = headers{ContentType: mime.TypeByExtension(strings.ToLower(filepath.Ext(fname)))}
 
 	for _, hdrs := range customHeadersDef {
@@ -68,7 +68,7 @@ func newSourceFile(fname string) (sf *sourceFile) {
 	}
 	sf.gzip = (sf.hdrs[ContentEncoding] == "gzip")
 
-	return
+	return sf
 }
 
 func (s *sourceFile) getHeader(hdr string) *string {

@@ -37,25 +37,25 @@ const testEnv = "test"
 type uploader func(*sourceFile) error
 
 // filesLists returns both the current files list as well as the difference from the old (cached) files list.
-func filesLists() (current utils.FileHashes, diff []string) {
-	current = utils.FileHashesNew(opts.Source)
+func filesLists() (utils.FileHashes, []string) {
+	current := utils.FileHashesNew(opts.Source)
 	old := utils.FileHashes{}
 	old.Load(opts.CacheFile)
-	diff = current.Diff(old)
+	diff := current.Diff(old)
 
-	return
+	return current, diff
 }
 
 // upload fetches sourceFiles from uploads chan, attempts to upload them and enqueue the results to
 // completed list. On failure it attempts to retry, up to maxTries per source file.
-func upload(fn uploader, uploads chan *sourceFile, rejected *syncedlist, wgUploads, wgWorkers *sync.WaitGroup) {
+func upload(fn uploader, uploads chan *sourceFile, rejected *syncedList, wgUploads, wgWorkers *sync.WaitGroup) {
 	defer wgWorkers.Done()
 
 	for src := range uploads {
 		src := src
 
 		if opts.dryRun {
-			say("Pretending to upload "+src.fname, ".")
+			say(fmt.Sprintf("Pretending to upload %s", src.fname), ".")
 			wgUploads.Done()
 			continue
 		}
@@ -63,20 +63,20 @@ func upload(fn uploader, uploads chan *sourceFile, rejected *syncedlist, wgUploa
 		err := fn(src)
 		if err == nil {
 			wgUploads.Done()
-			say("Uploaded "+src.fname, ".")
+			say(fmt.Sprintf("Uploaded %s", src.fname), ".")
 			continue
 		}
 
 		src.recordAttempt()
 		if !src.retriable() || !isRecoverable(err) {
 			rejected.add(src.fname)
-			say("Failed to upload "+src.fname+": "+err.Error(), "F")
+			say(fmt.Sprintf("Failed to upload %s: %v", src.fname, err), "F")
 			wgUploads.Done()
 			continue
 		}
 
 		go func() {
-			say("Retrying "+src.fname, "r")
+			say(fmt.Sprintf("Retrying %s", src.fname), "r")
 			wait := time.Duration(100.0*math.Pow(2, float64(src.attempts))) * time.Millisecond
 			if appEnv == testEnv {
 				wait = time.Nanosecond
@@ -96,7 +96,7 @@ func s3putGen() uploader {
 		}
 	}
 
-	return func(src *sourceFile) (err error) {
+	return func(src *sourceFile) error {
 		f, err := os.Open(filepath.Join(opts.Source, src.fname))
 		if err != nil {
 			return err
@@ -151,7 +151,7 @@ func main() {
 
 	s3put := s3putGen()
 
-	uploads, rejected := make(chan *sourceFile), &syncedlist{}
+	uploads, rejected := make(chan *sourceFile), &syncedList{}
 	wgUploads, wgWorkers := new(sync.WaitGroup), new(sync.WaitGroup)
 
 	current, diff := filesLists()

@@ -1,9 +1,8 @@
+version: "2"
+
 run:
   timeout: 5m
   tests: true
-  skip-dirs:
-    - vendor
-    - test/output
 
 linters:
   enable:
@@ -23,59 +22,39 @@ linters:
     - gocyclo       # Cyclomatic complexity
     - unparam       # Reports unused function parameters
 
-linters-settings:
-  errcheck:
-    check-type-assertions: true
-    check-blank: true
+  settings:
+    errcheck:
+      check-type-assertions: true
+      check-blank: true
 
-  govet:
-    enable-all: true
-    disable:
-      - fieldalignment  # Platform-specific, not worth the maintenance burden
+    govet:
+      enable-all: true
+      disable:
+        - fieldalignment  # Platform-specific, not worth the maintenance burden
 
-  gocyclo:
-    min-complexity: 15
+    gocyclo:
+      min-complexity: 15
 
-  gocritic:
-    enabled-tags:
-      - diagnostic
-      - style
-      - performance
-    disabled-checks:
-      - commentedOutCode
-      - unnamedResult
+    gocritic:
+      enabled-tags:
+        - diagnostic
+        - style
+        - performance
+      disabled-checks:
+        - commentedOutCode
+        - unnamedResult
 
-  gosec:
-    excludes:
-      - G401  # MD5 used for hashing (we use it for checksums, not crypto)
+    gosec:
+      excludes:
+        - G401  # MD5 used for hashing (we use it for checksums, not crypto)
+        - G304  # File path from user config is expected
 
-  revive:
-    confidence: 0.8
+    revive:
+      confidence: 0.8
 
-  misspell:
-    locale: US
+    misspell:
+      locale: US
 
 issues:
-  exclude-use-default: false
   max-issues-per-linter: 0
   max-same-issues: 0
-
-  exclude-rules:
-    # Exclude specific linters for test files
-    - path: _test\.go
-      linters:
-        - errcheck
-        - gosec
-        - gocritic
-
-    # Allow file operations in CLI tool
-    - text: "G304: Potential file inclusion via variable"
-      linters:
-        - gosec
-      path: opts\.go
-
-    # Allow globals during refactoring
-    - text: "G101: Potential hardcoded credentials"
-      linters:
-        - gosec
-      path: setup_test\.go

@@ -1,0 +1,39 @@
+# Git files
+.git
+.gitignore
+.github
+
+# Documentation
+*.md
+!README.md
+docs/
+
+# Test files
+*_test.go
+test/
+coverage.txt
+coverage.html
+
+# Build artifacts
+dist/
+*.exe
+*.dll
+*.so
+*.dylib
+go-s3-uploader
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Other
+.env
+.env.local
+*.log
