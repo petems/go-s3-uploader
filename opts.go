@@ -7,21 +7,22 @@ import (
 )
 
 type options struct {
-	WorkersCount int    `json:",omitempty"`
-	BucketName   string `json:",omitempty"`
-	Source       string `json:",omitempty"`
-	CacheFile    string `json:",omitempty"`
-	Region       string `json:",omitempty"`
-	Profile      string `json:",omitempty"`
-	Encrypt      bool   `json:",omitempty"`
+	BucketName string `json:",omitempty"`
+	Source     string `json:",omitempty"`
+	CacheFile  string `json:",omitempty"`
+	Region     string `json:",omitempty"`
+	Profile    string `json:",omitempty"`
+	cfgFile    string
+
+	WorkersCount int  `json:",omitempty"`
+	Encrypt      bool `json:",omitempty"`
 
 	dryRun, verbose, quiet,
 	doCache, doUpload, saveCfg bool
-	cfgFile string
 }
 
 func (o *options) dump(fname string) (err error) {
-	f, err := os.Create(fname)
+	f, err := os.Create(fname) // #nosec G304 - file path from user config is expected
 	if err != nil {
 		return err
 	}
@@ -30,7 +31,7 @@ func (o *options) dump(fname string) (err error) {
 		if err == nil {
 			err = err2
 		} else if err2 != nil {
-			err = fmt.Errorf("%v; %v", err, err2)
+			err = fmt.Errorf("%w; %w", err, err2)
 		}
 	}()
 
@@ -47,7 +48,7 @@ func (o *options) dump(fname string) (err error) {
 }
 
 func (o *options) restore(fname string) (err error) {
-	f, err := os.Open(fname)
+	f, err := os.Open(fname) // #nosec G304 - file path from user config is expected
 	if err != nil {
 		if os.IsNotExist(err) {
 			return nil
@@ -56,7 +57,9 @@ func (o *options) restore(fname string) (err error) {
 		return err
 	}
 	defer func() {
-		_ = f.Close()
+		if err2 := f.Close(); err2 != nil && err == nil {
+			err = err2
+		}
 	}()
 
 	tmp := options{}
@@ -65,12 +68,12 @@ func (o *options) restore(fname string) (err error) {
 		return
 	}
 
-	o.merge(tmp)
+	o.merge(&tmp)
 
 	return nil
 }
 
-func (o *options) merge(other options) {
+func (o *options) merge(other *options) {
 	if x := other.WorkersCount; x != 0 {
 		o.WorkersCount = x
 	}

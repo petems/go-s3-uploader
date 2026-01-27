@@ -37,7 +37,7 @@ func TestUpload(t *testing.T) {
 
 	opts.verbose = false
 	opts.quiet = true
-	go upload("a", upFn, up, rejected, wgUploads, wgWorkers)
+	go upload(upFn, up, rejected, wgUploads, wgWorkers)
 
 	up <- newSourceFile("foobar.html")
 	up <- newSourceFile("barbaz.txt")
@@ -65,7 +65,7 @@ func TestUploadDryRun(t *testing.T) {
 	opts.dryRun = true
 	opts.verbose = false
 	opts.quiet = true
-	go upload("b", upFn, up, rejected, wgUploads, wgWorkers)
+	go upload(upFn, up, rejected, wgUploads, wgWorkers)
 
 	up <- newSourceFile("foobar.html")
 	up <- newSourceFile("barbaz.txt")
@@ -92,7 +92,7 @@ func TestUploadUnrecoverable(t *testing.T) {
 
 	opts.verbose = false
 	opts.quiet = true
-	go upload("c", upFn, up, rejected, wgUploads, wgWorkers)
+	go upload(upFn, up, rejected, wgUploads, wgWorkers)
 
 	up <- newSourceFile("foobar.html")
 	up <- newSourceFile("barbaz.txt")
@@ -122,8 +122,8 @@ func TestUploadRecoverable(t *testing.T) {
 
 	opts.quiet = true
 	opts.verbose = false
-	go upload("d", upFn, up, rejected, wgUploads, wgWorkers)
-	go upload("e", upFn, up, rejected, wgUploads, wgWorkers)
+	go upload(upFn, up, rejected, wgUploads, wgWorkers)
+	go upload(upFn, up, rejected, wgUploads, wgWorkers)
 
 	sf1, sf2 := newSourceFile("barbaz.txt"), newSourceFile("foobar.html")
 	up <- sf1

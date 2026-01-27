@@ -30,6 +30,9 @@ const (
 // max number of attempts to retry a failed upload.
 const maxTries = 10
 
+// test environment constant
+const testEnv = "test"
+
 // signature of an s3 uploader func
 type uploader func(*sourceFile) error
 
@@ -45,7 +48,7 @@ func filesLists() (current utils.FileHashes, diff []string) {
 
 // upload fetches sourceFiles from uploads chan, attempts to upload them and enqueue the results to
 // completed list. On failure it attempts to retry, up to maxTries per source file.
-func upload(id string, fn uploader, uploads chan *sourceFile, rejected *syncedlist, wgUploads, wgWorkers *sync.WaitGroup) {
+func upload(fn uploader, uploads chan *sourceFile, rejected *syncedlist, wgUploads, wgWorkers *sync.WaitGroup) {
 	defer wgWorkers.Done()
 
 	for src := range uploads {
@@ -75,7 +78,7 @@ func upload(id string, fn uploader, uploads chan *sourceFile, rejected *syncedli
 		go func() {
 			say("Retrying "+src.fname, "r")
 			wait := time.Duration(100.0*math.Pow(2, float64(src.attempts))) * time.Millisecond
-			if appEnv == "test" {
+			if appEnv == testEnv {
 				wait = time.Nanosecond
 			}
 			<-time.After(wait)
@@ -85,12 +88,12 @@ func upload(id string, fn uploader, uploads chan *sourceFile, rejected *syncedli
 }
 
 // Generate an S3 upload func. It holds the bucket in a closure.
-func s3putGen() (up uploader, err error) {
-	if appEnv == "test" {
-		return func(src *sourceFile) error {
+func s3putGen() uploader {
+	if appEnv == testEnv {
+		return func(_ *sourceFile) error {
 			// TODO: capture the sourceFile for testing
 			return nil
-		}, nil
+		}
 	}
 
 	return func(src *sourceFile) (err error) {
@@ -108,13 +111,13 @@ func s3putGen() (up uploader, err error) {
 			go func() {
 				// FIXME: We need a better way to handle these.
 				if _, err2 := io.Copy(wz, f); err2 != nil {
-					panic(fmt.Errorf("decryption error: %v", err2))
+					panic(fmt.Errorf("compression error: %w", err2))
 				}
 				if err2 := wz.Close(); err2 != nil {
-					panic(fmt.Errorf("decryption error: %v", err2))
+					panic(fmt.Errorf("compression error: %w", err2))
 				}
 				if err2 := w.Close(); err2 != nil {
-					panic(fmt.Errorf("decryption error: %v", err2))
+					panic(fmt.Errorf("compression error: %w", err2))
 				}
 			}()
 
@@ -136,7 +139,7 @@ func s3putGen() (up uploader, err error) {
 		})
 
 		return err
-	}, nil
+	}
 }
 
 func main() {
@@ -146,11 +149,7 @@ func main() {
 		os.Exit(CmdLineOptionError)
 	}
 
-	s3put, err := s3putGen()
-	if err != nil {
-		fmt.Println("S3 Error:", err)
-		os.Exit(S3AuthError)
-	}
+	s3put := s3putGen()
 
 	uploads, rejected := make(chan *sourceFile), &syncedlist{}
 	wgUploads, wgWorkers := new(sync.WaitGroup), new(sync.WaitGroup)
@@ -170,7 +169,7 @@ func main() {
 	wgUploads.Add(len(diff))
 	wgWorkers.Add(opts.WorkersCount)
 	for i := 0; i < opts.WorkersCount; i++ {
-		go upload(fmt.Sprintf("%d", i), s3put, uploads, rejected, wgUploads, wgWorkers)
+		go upload(s3put, uploads, rejected, wgUploads, wgWorkers)
 	}
 
 	sort.Strings(diff)
