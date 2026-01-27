@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"os"
@@ -8,12 +9,9 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/credentials"
-	"github.com/aws/aws-sdk-go/aws/credentials/ec2rolecreds"
-	"github.com/aws/aws-sdk-go/aws/ec2metadata"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/s3"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
 )
 
 // isTestMode checks if the program is running under go test
@@ -40,10 +38,10 @@ var opts = &options{
 
 var appEnv string
 
-// s3 session.
-var sess *session.Session
+// AWS configuration and S3 client
+var awsCfg aws.Config
 
-var s3svc *s3.S3
+var s3svc *s3.Client
 
 var say func(...string)
 
@@ -116,38 +114,38 @@ func validateCmdLineFlag(label, val string) error {
 }
 
 func initAWSClient() {
+	ctx := context.Background()
 	var err error
-	sess, err = session.NewSession()
+
+	// Build config options
+	configOpts := []func(*config.LoadOptions) error{
+		config.WithRetryMaxAttempts(3),
+	}
+
+	// Set region if specified
+	if opts.Region != "" {
+		configOpts = append(configOpts, config.WithRegion(opts.Region))
+	}
+
+	// Set shared profile if specified
+	if opts.Profile != "" {
+		configOpts = append(configOpts, config.WithSharedConfigProfile(opts.Profile))
+	}
+
+	// Load AWS config with credential chain (automatically includes: shared credentials, EC2 role, env vars)
+	awsCfg, err = config.LoadDefaultConfig(ctx, configOpts...)
 	if err != nil {
-		abort(fmt.Errorf("failed to create AWS session: %w", err))
+		abort(fmt.Errorf("failed to load AWS config: %w", err))
 	}
 
-	creds := credentials.NewChainCredentials(
-		[]credentials.Provider{
-			&credentials.SharedCredentialsProvider{Profile: opts.Profile},
-			&ec2rolecreds.EC2RoleProvider{Client: ec2metadata.New(sess)},
-			&credentials.EnvProvider{},
-		})
-
-	retries := 2
-	awsCfg := &aws.Config{
-		Credentials: creds,
-		Region:      &opts.Region,
-		MaxRetries:  &retries,
+	// Verify credentials are available
+	_, err = awsCfg.Credentials.Retrieve(ctx)
+	if err != nil {
+		abort(fmt.Errorf("unable to initialize AWS credentials - please check environment: %w", err))
 	}
 
-	defer func() {
-		if r := recover(); r != nil {
-			// If we got to this, then getting the credentials failed - nothing else
-			// can raise a panic in here.
-			abort(fmt.Errorf("unable to initialize AWS credentials - please check environment"))
-		}
-	}()
-	if _, err := creds.Get(); err != nil {
-		abort(err)
-	}
-
-	s3svc = s3.New(sess, awsCfg)
+	// Create S3 client
+	s3svc = s3.NewFromConfig(awsCfg)
 }
 
 func abort(msg error) {
