@@ -2,6 +2,7 @@ package main
 
 import (
 	"compress/gzip"
+	"context"
 	"flag"
 	"fmt"
 	"io"
@@ -15,7 +16,9 @@ import (
 	"time"
 
 	"github.com/alexaandru/utils"
-	"github.com/aws/aws-sdk-go/service/s3/s3manager"
+	"github.com/aws/aws-sdk-go-v2/feature/s3/manager"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
+	s3types "github.com/aws/aws-sdk-go-v2/service/s3/types"
 )
 
 // Exit codes
@@ -97,13 +100,19 @@ func s3putGen() uploader {
 	}
 
 	return func(src *sourceFile) error {
+		ctx := context.Background()
 		f, err := os.Open(filepath.Join(opts.Source, src.fname))
 		if err != nil {
 			return err
 		}
+		defer func() {
+			if closeErr := f.Close(); closeErr != nil && err == nil {
+				err = closeErr
+			}
+		}()
 
 		var r io.Reader = f
-		cacheControl, contentEnc, contentType, sse := src.getHeader(CacheControl), src.getHeader(ContentEncoding),
+		cacheControl, contentEnc, contentType, encryption := src.getHeader(CacheControl), src.getHeader(ContentEncoding),
 			mime.TypeByExtension(strings.ToLower(filepath.Ext(src.fname))), src.getHeader(Encryption)
 		if src.gzip {
 			rr, w := io.Pipe()
@@ -124,19 +133,27 @@ func s3putGen() uploader {
 			r = rr
 		}
 
-		u := s3manager.NewUploader(sess, func(opts *s3manager.Uploader) {
-			opts.S3 = s3svc
-			opts.LeavePartsOnError = false
+		// Create uploader with the S3 client
+		uploader := manager.NewUploader(s3svc, func(u *manager.Uploader) {
+			u.LeavePartsOnError = false
 		})
-		_, err = u.Upload(&s3manager.UploadInput{
-			Key:                  &src.fname,
-			Body:                 r,
-			Bucket:               &opts.BucketName,
-			ContentType:          &contentType,
-			ContentEncoding:      contentEnc,
-			CacheControl:         cacheControl,
-			ServerSideEncryption: sse,
-		})
+
+		// Build upload input
+		uploadInput := &s3.PutObjectInput{
+			Key:             &src.fname,
+			Body:            r,
+			Bucket:          &opts.BucketName,
+			ContentType:     &contentType,
+			ContentEncoding: contentEnc,
+			CacheControl:    cacheControl,
+		}
+
+		// Add server-side encryption if requested
+		if encryption != nil {
+			uploadInput.ServerSideEncryption = s3types.ServerSideEncryption(*encryption)
+		}
+
+		_, err = uploader.Upload(ctx, uploadInput)
 
 		return err
 	}
