@@ -6,6 +6,7 @@ import (
 	"os"
 	"regexp"
 	"runtime"
+	"strings"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
@@ -14,6 +15,17 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
 )
+
+// isTestMode checks if the program is running under go test
+func isTestMode() bool {
+	// Check if running under go test by looking for test flags
+	for _, arg := range os.Args {
+		if strings.HasPrefix(arg, "-test.") {
+			return true
+		}
+	}
+	return false
+}
 
 var opts = &options{
 	WorkersCount: runtime.NumCPU() * 2,
@@ -144,6 +156,12 @@ func abort(msg error) {
 }
 
 func init() {
+	// Skip full initialization in test mode - tests will set up their own mocks
+	if isTestMode() {
+		say = loggerGen()
+		return
+	}
+
 	oldCfgFile := opts.cfgFile
 	if err := opts.restore(opts.cfgFile); err != nil {
 		abort(err)
