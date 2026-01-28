@@ -11,6 +11,7 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 )
 
@@ -38,10 +39,10 @@ var opts = &options{
 
 var appEnv string
 
-// AWS configuration and S3 client
-var awsCfg aws.Config
-
-var s3svc *s3.Client
+// s3Uploader is the global S3 uploader instance.
+// In production, this is initialized by initAWSClient().
+// In tests, this can be replaced with a mock.
+var s3Uploader S3Uploader
 
 var say func(...string)
 
@@ -113,9 +114,9 @@ func validateCmdLineFlag(label, val string) error {
 	return nil
 }
 
+// initAWSClient initializes the AWS SDK v2 client and S3 uploader.
 func initAWSClient() {
 	ctx := context.Background()
-	var err error
 
 	// Build config options
 	configOpts := []func(*config.LoadOptions) error{
@@ -133,19 +134,56 @@ func initAWSClient() {
 	}
 
 	// Load AWS config with credential chain (automatically includes: shared credentials, EC2 role, env vars)
-	awsCfg, err = config.LoadDefaultConfig(ctx, configOpts...)
+	cfg, err := config.LoadDefaultConfig(ctx, configOpts...)
 	if err != nil {
 		abort(fmt.Errorf("failed to load AWS config: %w", err))
 	}
 
 	// Verify credentials are available
-	_, err = awsCfg.Credentials.Retrieve(ctx)
+	creds, err := cfg.Credentials.Retrieve(ctx)
 	if err != nil {
 		abort(fmt.Errorf("unable to initialize AWS credentials - please check environment: %w", err))
 	}
+	if !creds.HasKeys() {
+		abort(fmt.Errorf("unable to initialize AWS credentials - please check environment"))
+	}
 
-	// Create S3 client
-	s3svc = s3.NewFromConfig(awsCfg)
+	// Create the S3 uploader
+	s3Uploader = NewS3Uploader(cfg)
+}
+
+// initAWSClientWithEndpoint initializes the AWS client with a custom endpoint.
+// This is useful for testing with LocalStack or other S3-compatible services.
+func initAWSClientWithEndpoint(endpoint string, region string) error {
+	ctx := context.Background()
+
+	// Create a custom endpoint resolver
+	customResolver := aws.EndpointResolverWithOptionsFunc(
+		func(service, resolvedRegion string, options ...interface{}) (aws.Endpoint, error) {
+			return aws.Endpoint{
+				URL:               endpoint,
+				HostnameImmutable: true,
+				SigningRegion:     region,
+			}, nil
+		},
+	)
+
+	cfg, err := config.LoadDefaultConfig(ctx,
+		config.WithRegion(region),
+		config.WithEndpointResolverWithOptions(customResolver),
+		config.WithCredentialsProvider(credentials.NewStaticCredentialsProvider("test", "test", "")),
+	)
+	if err != nil {
+		return fmt.Errorf("failed to load AWS configuration: %w", err)
+	}
+
+	// Create S3 client with path-style addressing (required for LocalStack)
+	client := s3.NewFromConfig(cfg, func(o *s3.Options) {
+		o.UsePathStyle = true
+	})
+
+	s3Uploader = NewS3UploaderWithClient(client)
+	return nil
 }
 
 func abort(msg error) {
