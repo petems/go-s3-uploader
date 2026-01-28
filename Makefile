@@ -20,7 +20,10 @@ cover:
 	@go test -coverprofile=coverage.out
 	@go tool cover -html=coverage.out
 
+lint:
+	@golangci-lint run ./...
+
 clean:
 	@rm -f go-s3-uploader go3up coverage.out
 
-.PHONY: test build
+.PHONY: test build lint cover clean run
