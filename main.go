@@ -16,9 +16,6 @@ import (
 	"time"
 
 	"github.com/alexaandru/utils"
-	"github.com/aws/aws-sdk-go-v2/feature/s3/manager"
-	"github.com/aws/aws-sdk-go-v2/service/s3"
-	s3types "github.com/aws/aws-sdk-go-v2/service/s3/types"
 )
 
 // Exit codes
@@ -90,16 +87,23 @@ func upload(fn uploader, uploads chan *sourceFile, rejected *syncedList, wgUploa
 	}
 }
 
-// Generate an S3 upload func. It holds the bucket in a closure.
+// s3putGen generates an S3 upload function using the S3Uploader interface.
+// In test mode, it returns a no-op function.
+// In production, it uses the global s3Uploader to perform actual uploads.
 func s3putGen() uploader {
-	if appEnv == testEnv {
+	return s3putGenWithUploader(s3Uploader)
+}
+
+// s3putGenWithUploader generates an S3 upload function using the provided uploader.
+// This allows for dependency injection in tests.
+func s3putGenWithUploader(u S3Uploader) uploader {
+	if appEnv == testEnv && u == nil {
 		return func(_ *sourceFile) error {
-			// TODO: capture the sourceFile for testing
 			return nil
 		}
 	}
 
-	return func(src *sourceFile) error {
+	return func(src *sourceFile) (err error) {
 		ctx := context.Background()
 		f, err := os.Open(filepath.Join(opts.Source, src.fname))
 		if err != nil {
@@ -111,50 +115,38 @@ func s3putGen() uploader {
 			}
 		}()
 
-		var r io.Reader = f
-		cacheControl, contentEnc, contentType, encryption := src.getHeader(CacheControl), src.getHeader(ContentEncoding),
-			mime.TypeByExtension(strings.ToLower(filepath.Ext(src.fname))), src.getHeader(Encryption)
+		var body io.Reader = f
+		contentType := mime.TypeByExtension(strings.ToLower(filepath.Ext(src.fname)))
+
+		// Handle gzip compression
 		if src.gzip {
-			rr, w := io.Pipe()
-			wz := gzip.NewWriter(w)
+			pr, pw := io.Pipe()
+			gz := gzip.NewWriter(pw)
+
 			go func() {
-				// FIXME: We need a better way to handle these.
-				if _, err2 := io.Copy(wz, f); err2 != nil {
-					panic(fmt.Errorf("compression error: %w", err2))
-				}
-				if err2 := wz.Close(); err2 != nil {
-					panic(fmt.Errorf("compression error: %w", err2))
-				}
-				if err2 := w.Close(); err2 != nil {
-					panic(fmt.Errorf("compression error: %w", err2))
+				defer pw.Close()
+				defer gz.Close()
+
+				if _, err := io.Copy(gz, f); err != nil {
+					pw.CloseWithError(fmt.Errorf("compression error: %w", err))
+					return
 				}
 			}()
 
-			r = rr
+			body = pr
 		}
 
-		// Create uploader with the S3 client
-		uploader := manager.NewUploader(s3svc, func(u *manager.Uploader) {
-			u.LeavePartsOnError = false
-		})
-
-		// Build upload input
-		uploadInput := &s3.PutObjectInput{
-			Key:             &src.fname,
-			Body:            r,
-			Bucket:          &opts.BucketName,
-			ContentType:     &contentType,
-			ContentEncoding: contentEnc,
-			CacheControl:    cacheControl,
+		input := &UploadInput{
+			Bucket:               opts.BucketName,
+			Key:                  src.fname,
+			Body:                 body,
+			ContentType:          &contentType,
+			ContentEncoding:      src.getHeader(ContentEncoding),
+			CacheControl:         src.getHeader(CacheControl),
+			ServerSideEncryption: src.getHeader(Encryption),
 		}
 
-		// Add server-side encryption if requested
-		if encryption != nil {
-			uploadInput.ServerSideEncryption = s3types.ServerSideEncryption(*encryption)
-		}
-
-		_, err = uploader.Upload(ctx, uploadInput)
-
+		_, err = u.Upload(ctx, input)
 		return err
 	}
 }

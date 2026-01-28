@@ -13,6 +13,29 @@ build:
 test:
 	@go test -race -coverprofile=coverage.txt -covermode=atomic ./...
 
+# Run acceptance tests (requires LocalStack)
+test-acceptance: localstack-up
+	@echo "Waiting for LocalStack to be ready..."
+	@sleep 3
+	@go test -race -v -tags=acceptance ./...
+	@$(MAKE) localstack-down
+
+# Run all tests
+test-all: test test-acceptance
+
+# Start LocalStack
+localstack-up:
+	@docker-compose up -d localstack
+	@echo "LocalStack starting on http://localhost:4566"
+
+# Stop LocalStack
+localstack-down:
+	@docker-compose down
+
+# Check LocalStack health
+localstack-health:
+	@curl -s http://localhost:4566/_localstack/health | jq .
+
 run: build
 	@./go-s3-uploader -bucket="s3.ungur.ro" -source=test/output -cachefile=test/.go3up.txt
 
@@ -24,6 +47,7 @@ lint:
 	@golangci-lint run ./...
 
 clean:
-	@rm -f go-s3-uploader go3up coverage.out
+	@rm -f go-s3-uploader go3up coverage.out coverage.txt
+	@rm -rf localstack-data
 
-.PHONY: test build lint cover clean run
+.PHONY: test test-acceptance test-all build run cover lint clean localstack-up localstack-down localstack-health
