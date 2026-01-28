@@ -22,9 +22,9 @@ Build directly with go (without version info):
 go build
 ```
 
-Run tests (requires mock AWS credentials):
+Run tests:
 ```bash
-AWS_SECRET_ACCESS_KEY=secret AWS_ACCESS_KEY_ID=secret go test -race -coverprofile=coverage.txt -covermode=atomic ./...
+go test -race -coverprofile=coverage.txt -covermode=atomic ./...
 ```
 
 Run tests with coverage report:
@@ -80,5 +80,5 @@ Example run with test data:
 ## Testing Notes
 
 - Tests use `appEnv = "test"` to mock S3 operations and disable retry delays
-- Mock AWS credentials required: `AWS_SECRET_ACCESS_KEY=secret AWS_ACCESS_KEY_ID=secret`
+- AWS initialization is skipped in test mode (detected via `-test.` flags)
 - Test data in `test/` directory with sample cache files

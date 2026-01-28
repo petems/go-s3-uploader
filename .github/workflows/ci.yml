@@ -35,9 +35,7 @@ jobs:
         run: go mod verify
 
       - name: Run tests
-        run: |
-          AWS_SECRET_ACCESS_KEY=secret AWS_ACCESS_KEY_ID=secret \
-          go test -v -race -coverprofile=coverage.txt -covermode=atomic ./...
+        run: go test -v -race -coverprofile=coverage.txt -covermode=atomic ./...
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v5
