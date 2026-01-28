@@ -24,8 +24,30 @@ locally, yet).
 Run `go-s3-uploader -h` to get the help. You can save your preferences to a .go-s3-uploader.json config file by
 passing your command line flags as usual and adding "-save" at the end.
 
+Check the version with `go-s3-uploader -version` to see the build version, git commit, and build date.
+
 For authentication, see http://docs.aws.amazon.com/cli/latest/userguide/cli-chap-getting-started.html
 as we pretty much support all of those options, in this order: shared profile; EC2 role; env vars.
+
+## Building
+
+Build the binary with version information:
+
+```bash
+make build
+```
+
+The build process automatically injects version information from git (commit hash, tags, and build date). If you want to specify a custom version:
+
+```bash
+make build VERSION=1.0.0
+```
+
+Or build directly with `go build`:
+
+```bash
+go build -ldflags "-X 'main.Version=1.0.0' -X 'main.GitCommit=$(git rev-parse --short HEAD)' -X 'main.BuildDate=$(date -u '+%Y-%m-%d_%H:%M:%S')'"
+```
 
 ## Migration from go3up
 
