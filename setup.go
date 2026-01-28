@@ -157,6 +157,7 @@ func abort(msg error) {
 func init() {
 	// Skip full initialization in test mode - tests will set up their own mocks
 	if isTestMode() {
+		appEnv = testEnv
 		say = loggerGen()
 		return
 	}
