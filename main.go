@@ -165,10 +165,28 @@ func s3putGenWithUploader(u S3Uploader) uploader {
 }
 
 func main() {
-	if err := validateCmdLineFlags(opts); err != nil {
-		fmt.Printf("Required field missing: %v.\n\nUsage:\n", err)
+	// Check if no arguments were provided (except program name)
+	if flag.NFlag() == 0 && len(os.Args) == 1 {
+		fmt.Fprintln(os.Stderr, "Error: No arguments provided")
+		fmt.Fprintln(os.Stderr, "\ngo-s3-uploader uploads files to Amazon S3 with intelligent caching")
+		fmt.Fprintln(os.Stderr, "\nRequired flags:")
+		fmt.Fprintln(os.Stderr, "  -bucket    Bucket to upload files to")
+		fmt.Fprintln(os.Stderr, "\nCommon flags:")
+		fmt.Fprintln(os.Stderr, "  -source    Source folder for files to be uploaded (default: output)")
+		fmt.Fprintln(os.Stderr, "\nAll available flags:")
 		flag.PrintDefaults()
 		os.Exit(CmdLineOptionError)
+	}
+
+	if err := validateCmdLineFlags(opts); err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %v\n\nUsage:\n", err)
+		flag.PrintDefaults()
+		os.Exit(CmdLineOptionError)
+	}
+
+	// Initialize AWS client after validation
+	if appEnv != testEnv {
+		initAWSClient()
 	}
 
 	s3put := s3putGen()
