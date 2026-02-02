@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"os"
@@ -8,12 +9,7 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/credentials"
-	"github.com/aws/aws-sdk-go/aws/credentials/ec2rolecreds"
-	"github.com/aws/aws-sdk-go/aws/ec2metadata"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/s3"
+	"github.com/aws/aws-sdk-go-v2/config"
 )
 
 // isTestMode checks if the program is running under go test
@@ -40,10 +36,10 @@ var opts = &options{
 
 var appEnv string
 
-// s3 session.
-var sess *session.Session
-
-var s3svc *s3.S3
+// s3Uploader is the global S3 uploader instance.
+// In production, this is initialized by initAWSClient().
+// In tests, this can be replaced with a mock.
+var s3Uploader S3Uploader
 
 var say func(...string)
 
@@ -115,39 +111,42 @@ func validateCmdLineFlag(label, val string) error {
 	return nil
 }
 
+// initAWSClient initializes the AWS SDK v2 client and S3 uploader.
 func initAWSClient() {
-	var err error
-	sess, err = session.NewSession()
+	ctx := context.Background()
+
+	// Build config options
+	configOpts := []func(*config.LoadOptions) error{
+		config.WithRetryMaxAttempts(3),
+	}
+
+	// Set region if specified
+	if opts.Region != "" {
+		configOpts = append(configOpts, config.WithRegion(opts.Region))
+	}
+
+	// Set shared profile if specified
+	if opts.Profile != "" {
+		configOpts = append(configOpts, config.WithSharedConfigProfile(opts.Profile))
+	}
+
+	// Load AWS config with credential chain (automatically includes: shared credentials, EC2 role, env vars)
+	cfg, err := config.LoadDefaultConfig(ctx, configOpts...)
 	if err != nil {
-		abort(fmt.Errorf("failed to create AWS session: %w", err))
+		abort(fmt.Errorf("failed to load AWS config: %w", err))
 	}
 
-	creds := credentials.NewChainCredentials(
-		[]credentials.Provider{
-			&credentials.SharedCredentialsProvider{Profile: opts.Profile},
-			&ec2rolecreds.EC2RoleProvider{Client: ec2metadata.New(sess)},
-			&credentials.EnvProvider{},
-		})
-
-	retries := 2
-	awsCfg := &aws.Config{
-		Credentials: creds,
-		Region:      &opts.Region,
-		MaxRetries:  &retries,
+	// Verify credentials are available
+	creds, err := cfg.Credentials.Retrieve(ctx)
+	if err != nil {
+		abort(fmt.Errorf("unable to initialize AWS credentials - please check environment: %w", err))
+	}
+	if !creds.HasKeys() {
+		abort(fmt.Errorf("unable to initialize AWS credentials - please check environment"))
 	}
 
-	defer func() {
-		if r := recover(); r != nil {
-			// If we got to this, then getting the credentials failed - nothing else
-			// can raise a panic in here.
-			abort(fmt.Errorf("unable to initialize AWS credentials - please check environment"))
-		}
-	}()
-	if _, err := creds.Get(); err != nil {
-		abort(err)
-	}
-
-	s3svc = s3.New(sess, awsCfg)
+	// Create the S3 uploader
+	s3Uploader = NewS3Uploader(&cfg)
 }
 
 func abort(msg error) {
@@ -158,6 +157,7 @@ func abort(msg error) {
 func init() {
 	// Skip full initialization in test mode - tests will set up their own mocks
 	if isTestMode() {
+		appEnv = testEnv
 		say = loggerGen()
 		return
 	}

@@ -2,6 +2,7 @@ package main
 
 import (
 	"compress/gzip"
+	"context"
 	"flag"
 	"fmt"
 	"io"
@@ -15,7 +16,6 @@ import (
 	"time"
 
 	"github.com/alexaandru/utils"
-	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 )
 
 // Exit codes
@@ -87,57 +87,79 @@ func upload(fn uploader, uploads chan *sourceFile, rejected *syncedList, wgUploa
 	}
 }
 
-// Generate an S3 upload func. It holds the bucket in a closure.
+// s3putGen generates an S3 upload function using the S3Uploader interface.
+// In test mode, it returns a no-op function.
+// In production, it uses the global s3Uploader to perform actual uploads.
 func s3putGen() uploader {
-	if appEnv == testEnv {
+	return s3putGenWithUploader(s3Uploader)
+}
+
+// s3putGenWithUploader generates an S3 upload function using the provided uploader.
+// This allows for dependency injection in tests.
+func s3putGenWithUploader(u S3Uploader) uploader {
+	if appEnv == testEnv && u == nil {
 		return func(_ *sourceFile) error {
-			// TODO: capture the sourceFile for testing
 			return nil
 		}
 	}
 
-	return func(src *sourceFile) error {
+	if u == nil {
+		return func(_ *sourceFile) error {
+			return fmt.Errorf("s3 uploader is not initialized")
+		}
+	}
+
+	return func(src *sourceFile) (err error) {
+		ctx := context.Background()
 		f, err := os.Open(filepath.Join(opts.Source, src.fname))
 		if err != nil {
 			return err
 		}
+		defer func() {
+			if closeErr := f.Close(); closeErr != nil && err == nil {
+				err = closeErr
+			}
+		}()
 
-		var r io.Reader = f
-		cacheControl, contentEnc, contentType, sse := src.getHeader(CacheControl), src.getHeader(ContentEncoding),
-			mime.TypeByExtension(strings.ToLower(filepath.Ext(src.fname))), src.getHeader(Encryption)
+		var body io.Reader = f
+		contentType := mime.TypeByExtension(strings.ToLower(filepath.Ext(src.fname)))
+
+		// Handle gzip compression
 		if src.gzip {
-			rr, w := io.Pipe()
-			wz := gzip.NewWriter(w)
+			pr, pw := io.Pipe()
+			gz := gzip.NewWriter(pw)
+
 			go func() {
-				// FIXME: We need a better way to handle these.
-				if _, err2 := io.Copy(wz, f); err2 != nil {
-					panic(fmt.Errorf("compression error: %w", err2))
+				if _, copyErr := io.Copy(gz, f); copyErr != nil {
+					pw.CloseWithError(fmt.Errorf("compression error: %w", copyErr))
+					return
 				}
-				if err2 := wz.Close(); err2 != nil {
-					panic(fmt.Errorf("compression error: %w", err2))
+				if closeErr := gz.Close(); closeErr != nil {
+					pw.CloseWithError(fmt.Errorf("gzip close error: %w", closeErr))
+					return
 				}
-				if err2 := w.Close(); err2 != nil {
-					panic(fmt.Errorf("compression error: %w", err2))
+				// pw.Close() after successful gz.Close() typically doesn't fail.
+				// If it does, the error will be caught by the Upload call.
+				if closeErr := pw.Close(); closeErr != nil {
+					// Can't call CloseWithError after Close, error will surface in Upload
+					return
 				}
 			}()
 
-			r = rr
+			body = pr
 		}
 
-		u := s3manager.NewUploader(sess, func(opts *s3manager.Uploader) {
-			opts.S3 = s3svc
-			opts.LeavePartsOnError = false
-		})
-		_, err = u.Upload(&s3manager.UploadInput{
-			Key:                  &src.fname,
-			Body:                 r,
-			Bucket:               &opts.BucketName,
+		input := &UploadInput{
+			Bucket:               opts.BucketName,
+			Key:                  src.fname,
+			Body:                 body,
 			ContentType:          &contentType,
-			ContentEncoding:      contentEnc,
-			CacheControl:         cacheControl,
-			ServerSideEncryption: sse,
-		})
+			ContentEncoding:      src.getHeader(ContentEncoding),
+			CacheControl:         src.getHeader(CacheControl),
+			ServerSideEncryption: src.getHeader(Encryption),
+		}
 
+		_, err = u.Upload(ctx, input)
 		return err
 	}
 }
