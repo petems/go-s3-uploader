@@ -186,5 +186,5 @@ func init() {
 	}
 	appEnv = "production"
 	say = loggerGen()
-	initAWSClient()
+	// AWS client initialization moved to main() after flag validation
 }
