@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 	"testing"
 )
@@ -128,9 +129,9 @@ func TestMockS3Uploader_GetUploadByKey(t *testing.T) {
 	mock := NewMockS3Uploader()
 	ctx := context.Background()
 
-	mock.Upload(ctx, &UploadInput{Bucket: "bucket", Key: "file1.txt", Body: strings.NewReader("one")})
-	mock.Upload(ctx, &UploadInput{Bucket: "bucket", Key: "file2.txt", Body: strings.NewReader("two")})
-	mock.Upload(ctx, &UploadInput{Bucket: "bucket", Key: "file3.txt", Body: strings.NewReader("three")})
+	_, _ = mock.Upload(ctx, &UploadInput{Bucket: "bucket", Key: "file1.txt", Body: strings.NewReader("one")})   //nolint:errcheck // test setup
+	_, _ = mock.Upload(ctx, &UploadInput{Bucket: "bucket", Key: "file2.txt", Body: strings.NewReader("two")})   //nolint:errcheck // test setup
+	_, _ = mock.Upload(ctx, &UploadInput{Bucket: "bucket", Key: "file3.txt", Body: strings.NewReader("three")}) //nolint:errcheck // test setup
 
 	upload := mock.GetUploadByKey("file2.txt")
 	if upload == nil {
@@ -150,9 +151,9 @@ func TestMockS3Uploader_GetUploadsByBucket(t *testing.T) {
 	mock := NewMockS3Uploader()
 	ctx := context.Background()
 
-	mock.Upload(ctx, &UploadInput{Bucket: "bucket-a", Key: "file1.txt", Body: strings.NewReader("a1")})
-	mock.Upload(ctx, &UploadInput{Bucket: "bucket-b", Key: "file2.txt", Body: strings.NewReader("b1")})
-	mock.Upload(ctx, &UploadInput{Bucket: "bucket-a", Key: "file3.txt", Body: strings.NewReader("a2")})
+	_, _ = mock.Upload(ctx, &UploadInput{Bucket: "bucket-a", Key: "file1.txt", Body: strings.NewReader("a1")}) //nolint:errcheck // test setup
+	_, _ = mock.Upload(ctx, &UploadInput{Bucket: "bucket-b", Key: "file2.txt", Body: strings.NewReader("b1")}) //nolint:errcheck // test setup
+	_, _ = mock.Upload(ctx, &UploadInput{Bucket: "bucket-a", Key: "file3.txt", Body: strings.NewReader("a2")}) //nolint:errcheck // test setup
 
 	bucketA := mock.GetUploadsByBucket("bucket-a")
 	if len(bucketA) != 2 {
@@ -169,7 +170,7 @@ func TestMockS3Uploader_Reset(t *testing.T) {
 	mock := NewMockS3Uploader()
 	ctx := context.Background()
 
-	mock.Upload(ctx, &UploadInput{Bucket: "bucket", Key: "file.txt", Body: strings.NewReader("content")})
+	_, _ = mock.Upload(ctx, &UploadInput{Bucket: "bucket", Key: "file.txt", Body: strings.NewReader("content")}) //nolint:errcheck // test setup
 
 	if mock.UploadCount != 1 {
 		t.Fatalf("expected UploadCount=1 before reset, got %d", mock.UploadCount)
@@ -252,10 +253,10 @@ func TestMockS3Uploader_ConcurrentUploads(t *testing.T) {
 		go func(n int) {
 			input := &UploadInput{
 				Bucket: "test-bucket",
-				Key:    strings.Replace("file-N.txt", "N", string(rune('0'+n)), 1),
+				Key:    fmt.Sprintf("file-%d.txt", n),
 				Body:   strings.NewReader("content"),
 			}
-			mock.Upload(ctx, input)
+			_, _ = mock.Upload(ctx, input) //nolint:errcheck // test setup
 			done <- true
 		}(i)
 	}
