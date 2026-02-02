@@ -3,6 +3,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -315,7 +316,7 @@ func TestAcceptance_LargeFileUpload(t *testing.T) {
 	input := &UploadInput{
 		Bucket:      suite.bucketName,
 		Key:         "large/bigfile.bin",
-		Body:        strings.NewReader(string(content)),
+		Body:        bytes.NewReader(content),
 		ContentType: stringPtr("application/octet-stream"),
 	}
 
