@@ -417,9 +417,13 @@ func TestAcceptance_FullUploadPipeline(t *testing.T) {
 
 	// Test the s3putGenWithUploader function
 	oldSource := opts.Source
+	oldBucket := opts.BucketName
 	opts.Source = tmpDir
 	opts.BucketName = suite.bucketName
-	defer func() { opts.Source = oldSource }()
+	defer func() {
+		opts.Source = oldSource
+		opts.BucketName = oldBucket
+	}()
 
 	// Create uploader function with our test uploader
 	uploadFn := s3putGenWithUploader(suite.uploader)
