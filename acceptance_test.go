@@ -472,20 +472,25 @@ func TestAcceptance_InitAWSClientWithEndpoint(t *testing.T) {
 		},
 	)
 
-	cfg, _ := config.LoadDefaultConfig(ctx,
+	cfg, err := config.LoadDefaultConfig(ctx,
 		config.WithRegion(testRegion),
 		config.WithEndpointResolverWithOptions(customResolver),
 		config.WithCredentialsProvider(credentials.NewStaticCredentialsProvider("test", "test", "")),
 	)
+	if err != nil {
+		t.Fatalf("Failed to create AWS config: %v", err)
+	}
 
 	client := s3.NewFromConfig(cfg, func(o *s3.Options) {
 		o.UsePathStyle = true
 	})
 
 	bucketName := fmt.Sprintf("init-test-%d", time.Now().UnixNano())
-	client.CreateBucket(ctx, &s3.CreateBucketInput{
+	if _, err := client.CreateBucket(ctx, &s3.CreateBucketInput{
 		Bucket: aws.String(bucketName),
-	})
+	}); err != nil {
+		t.Fatalf("Failed to create test bucket %s: %v", bucketName, err)
+	}
 	defer client.DeleteBucket(ctx, &s3.DeleteBucketInput{
 		Bucket: aws.String(bucketName),
 	})
