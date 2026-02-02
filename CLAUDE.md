@@ -32,6 +32,15 @@ Run tests with coverage report:
 make cover
 ```
 
+Run linter:
+```bash
+make lint
+```
+
+**Important**: Always run `make lint` in these situations:
+- After completing implementation of a feature, fixing a bug, or making large code changes
+- Before pushing code (unless you explicitly want to force things through)
+
 Example run with test data:
 ```bash
 ./go-s3-uploader -bucket="s3.ungur.ro" -source=test/output -cachefile=test/.go3up.txt
