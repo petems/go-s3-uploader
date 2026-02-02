@@ -11,7 +11,6 @@ services:
       - PERSISTENCE=0
     volumes:
       - "./localstack-data:/var/lib/localstack"
-      - "/var/run/docker.sock:/var/run/docker.sock"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:4566/_localstack/health"]
       interval: 5s
