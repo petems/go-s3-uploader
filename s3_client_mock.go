@@ -88,6 +88,7 @@ func (m *MockS3Uploader) Reset() {
 }
 
 // GetUploadByKey returns the first upload matching the given key, or nil if not found.
+// Note: The returned pointer references internal test data and should not be modified by callers.
 func (m *MockS3Uploader) GetUploadByKey(key string) *RecordedUpload {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -100,6 +101,7 @@ func (m *MockS3Uploader) GetUploadByKey(key string) *RecordedUpload {
 }
 
 // GetUploadsByBucket returns all uploads to the specified bucket.
+// Note: The returned pointers reference internal test data and should not be modified by callers.
 func (m *MockS3Uploader) GetUploadsByBucket(bucket string) []*RecordedUpload {
 	m.mu.Lock()
 	defer m.mu.Unlock()
