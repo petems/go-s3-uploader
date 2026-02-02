@@ -7,6 +7,10 @@ LDFLAGS := -X 'main.Version=$(VERSION)' \
            -X 'main.GitCommit=$(GIT_COMMIT)' \
            -X 'main.BuildDate=$(BUILD_DATE)'
 
+.DEFAULT_GOAL := all
+
+all: build
+
 build:
 	@go build -ldflags "$(LDFLAGS)"
 
@@ -58,4 +62,4 @@ clean:
 	@rm -f go-s3-uploader go3up coverage.out coverage.txt
 	@rm -rf localstack-data
 
-.PHONY: test test-acceptance test-all build run cover lint clean localstack-up localstack-down localstack-wait localstack-health
+.PHONY: all test test-acceptance test-all build run cover lint clean localstack-up localstack-down localstack-wait localstack-health
