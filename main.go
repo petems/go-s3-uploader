@@ -124,11 +124,18 @@ func s3putGenWithUploader(u S3Uploader) uploader {
 			gz := gzip.NewWriter(pw)
 
 			go func() {
-				defer pw.Close()
-				defer gz.Close()
-
-				if _, err := io.Copy(gz, f); err != nil {
-					pw.CloseWithError(fmt.Errorf("compression error: %w", err))
+				if _, copyErr := io.Copy(gz, f); copyErr != nil {
+					pw.CloseWithError(fmt.Errorf("compression error: %w", copyErr))
+					return
+				}
+				if closeErr := gz.Close(); closeErr != nil {
+					pw.CloseWithError(fmt.Errorf("gzip close error: %w", closeErr))
+					return
+				}
+				// pw.Close() after successful gz.Close() typically doesn't fail.
+				// If it does, the error will be caught by the Upload call.
+				if closeErr := pw.Close(); closeErr != nil {
+					// Can't call CloseWithError after Close, error will surface in Upload
 					return
 				}
 			}()
