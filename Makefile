@@ -16,9 +16,17 @@ test:
 # Run acceptance tests (requires LocalStack)
 test-acceptance: localstack-up
 	@echo "Waiting for LocalStack to be ready..."
-	@sleep 3
-	@go test -race -v -tags=acceptance ./...
-	@$(MAKE) localstack-down
+	@$(MAKE) localstack-wait
+	@go test -race -v -tags=acceptance ./... ; result=$$?; $(MAKE) localstack-down; exit $$result
+
+# Wait for LocalStack to be healthy
+localstack-wait:
+	@echo "Waiting for LocalStack health..."
+	@for i in 1 2 3 4 5 6 7 8 9 10; do \
+		curl -sf http://localhost:4566/_localstack/health > /dev/null && break; \
+		echo "Attempt $$i: LocalStack not ready, waiting..."; \
+		sleep 2; \
+	done
 
 # Run all tests
 test-all: test test-acceptance
@@ -50,4 +58,4 @@ clean:
 	@rm -f go-s3-uploader go3up coverage.out coverage.txt
 	@rm -rf localstack-data
 
-.PHONY: test test-acceptance test-all build run cover lint clean localstack-up localstack-down localstack-health
+.PHONY: test test-acceptance test-all build run cover lint clean localstack-up localstack-down localstack-wait localstack-health
