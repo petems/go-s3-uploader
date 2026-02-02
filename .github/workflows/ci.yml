@@ -92,7 +92,7 @@ jobs:
           go build -v -o go-s3-uploader-${{ matrix.goos }}-${{ matrix.goarch }}
 
       - name: Upload artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: go-s3-uploader-${{ matrix.goos }}-${{ matrix.goarch }}
           path: go-s3-uploader-${{ matrix.goos }}-${{ matrix.goarch }}*
