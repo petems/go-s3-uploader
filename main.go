@@ -103,6 +103,12 @@ func s3putGenWithUploader(u S3Uploader) uploader {
 		}
 	}
 
+	if u == nil {
+		return func(_ *sourceFile) error {
+			return fmt.Errorf("s3 uploader is not initialized")
+		}
+	}
+
 	return func(src *sourceFile) (err error) {
 		ctx := context.Background()
 		f, err := os.Open(filepath.Join(opts.Source, src.fname))
