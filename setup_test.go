@@ -88,7 +88,6 @@ func init() {
 	opts.BucketName = "example_bucket"
 	opts.Source = "test/output"
 	opts.CacheFile = "test/.go3up.txt"
-	appEnv = "test"
 	fakeBuffer := &bytes.Buffer{}
 	sayLock := &sync.Mutex{}
 	sayFn := loggerGen(fakeBuffer)
