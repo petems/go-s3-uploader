@@ -26,11 +26,18 @@ test-acceptance: localstack-up
 # Wait for LocalStack to be healthy
 localstack-wait:
 	@echo "Waiting for LocalStack health..."
-	@for i in 1 2 3 4 5 6 7 8 9 10; do \
-		curl -sf http://localhost:4566/_localstack/health > /dev/null && break; \
+	@ready=0; \
+	for i in 1 2 3 4 5 6 7 8 9 10; do \
+		if curl -sf http://localhost:4566/_localstack/health > /dev/null; then \
+			ready=1; break; \
+		fi; \
 		echo "Attempt $$i: LocalStack not ready, waiting..."; \
 		sleep 2; \
-	done
+	done; \
+	if [ "$$ready" -ne 1 ]; then \
+		echo "LocalStack did not become healthy in time"; \
+		exit 1; \
+	fi
 
 # Run all tests
 test-all: test test-acceptance
