@@ -59,13 +59,15 @@ func NewS3UploaderWithClient(client *s3.Client, optFns ...func(*manager.Uploader
 // Upload implements S3Uploader.Upload using the AWS SDK v2 manager.
 func (u *S3UploaderSDK) Upload(ctx context.Context, input *UploadInput) (*UploadOutput, error) {
 	sdkInput := &s3.PutObjectInput{
-		Bucket:      aws.String(input.Bucket),
-		Key:         aws.String(input.Key),
-		Body:        input.Body,
-		ContentType: input.ContentType,
+		Bucket: aws.String(input.Bucket),
+		Key:    aws.String(input.Key),
+		Body:   input.Body,
 	}
 
 	// Only set optional fields if they are provided
+	if input.ContentType != nil {
+		sdkInput.ContentType = input.ContentType
+	}
 	if input.ContentEncoding != nil {
 		sdkInput.ContentEncoding = input.ContentEncoding
 	}
