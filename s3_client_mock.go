@@ -39,7 +39,7 @@ func NewMockS3Uploader() *MockS3Uploader {
 
 // Upload implements S3Uploader.Upload by recording the upload and
 // optionally returning an error from ErrorFunc.
-func (m *MockS3Uploader) Upload(ctx context.Context, input *UploadInput) (*UploadOutput, error) {
+func (m *MockS3Uploader) Upload(_ context.Context, input *UploadInput) (*UploadOutput, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 

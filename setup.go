@@ -9,10 +9,7 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
-	"github.com/aws/aws-sdk-go-v2/credentials"
-	"github.com/aws/aws-sdk-go-v2/service/s3"
 )
 
 // isTestMode checks if the program is running under go test
@@ -149,41 +146,7 @@ func initAWSClient() {
 	}
 
 	// Create the S3 uploader
-	s3Uploader = NewS3Uploader(cfg)
-}
-
-// initAWSClientWithEndpoint initializes the AWS client with a custom endpoint.
-// This is useful for testing with LocalStack or other S3-compatible services.
-func initAWSClientWithEndpoint(endpoint string, region string) error {
-	ctx := context.Background()
-
-	// Create a custom endpoint resolver
-	customResolver := aws.EndpointResolverWithOptionsFunc(
-		func(service, resolvedRegion string, options ...interface{}) (aws.Endpoint, error) {
-			return aws.Endpoint{
-				URL:               endpoint,
-				HostnameImmutable: true,
-				SigningRegion:     region,
-			}, nil
-		},
-	)
-
-	cfg, err := config.LoadDefaultConfig(ctx,
-		config.WithRegion(region),
-		config.WithEndpointResolverWithOptions(customResolver),
-		config.WithCredentialsProvider(credentials.NewStaticCredentialsProvider("test", "test", "")),
-	)
-	if err != nil {
-		return fmt.Errorf("failed to load AWS configuration: %w", err)
-	}
-
-	// Create S3 client with path-style addressing (required for LocalStack)
-	client := s3.NewFromConfig(cfg, func(o *s3.Options) {
-		o.UsePathStyle = true
-	})
-
-	s3Uploader = NewS3UploaderWithClient(client)
-	return nil
+	s3Uploader = NewS3Uploader(&cfg)
 }
 
 func abort(msg error) {

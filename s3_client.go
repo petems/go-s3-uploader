@@ -43,8 +43,8 @@ type S3UploaderSDK struct {
 }
 
 // NewS3Uploader creates a new S3Uploader backed by the AWS SDK v2.
-func NewS3Uploader(cfg aws.Config, optFns ...func(*manager.Uploader)) *S3UploaderSDK {
-	client := s3.NewFromConfig(cfg)
+func NewS3Uploader(cfg *aws.Config, optFns ...func(*manager.Uploader)) *S3UploaderSDK {
+	client := s3.NewFromConfig(*cfg)
 	uploader := manager.NewUploader(client, optFns...)
 	return &S3UploaderSDK{uploader: uploader}
 }
